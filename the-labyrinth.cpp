@@ -33,10 +33,6 @@ inline bool IsValidPoint(const T& field, const Point& p) {
     return p.y >= 0 && p.y < field.size() && p.x >= 0 && p.x < field[0].size();
 }
 
-inline bool IsSpace(const std::vector<std::string>& field, const Point& p) {
-    return IsValidPoint(field, p) && field[p.y][p.x] != '?' && field[p.y][p.x] != '#';
-}
-
 inline std::optional<Point> TryGetRoomLocation(const std::vector<std::string>& field, const char room) {
     for (size_t i = 0; i < field.size(); ++i) {
         const auto& row = field[i];
@@ -94,14 +90,20 @@ public:
     std::optional<Point> findPathToNearestUnvisited(const std::vector<std::string>& field,
                                                     const std::vector<std::vector<bool>>& fieldVisited,
                                                     const Point& start) {
-        findPath(field, start, true, [&field, &fieldVisited](const std::shared_ptr<Node>& node) {
-            if (!node) {
-                return false;
-            }
-            const auto pos = node->getPos();
-            return IsValidPoint(fieldVisited, pos) && !fieldVisited[pos.y][pos.x] &&
-                   HasSpecificNeighbour(field, pos, '?');
-        });
+        findPath(
+            field, start, true,
+            [&field, &fieldVisited](const std::shared_ptr<Node>& node) {
+                if (!node) {
+                    return false;
+                }
+                const auto pos = node->getPos();
+                return IsValidPoint(fieldVisited, pos) && !fieldVisited[pos.y][pos.x] &&
+                       HasSpecificNeighbour(field, pos, '?');
+            },
+            [&field](const Point& p) {
+                return IsValidPoint(field, p) && field[p.y][p.x] != '?' && field[p.y][p.x] != '#' &&
+                       field[p.y][p.x] != 'C';
+            });
         printPathTree(field);
         return getFirstStep();
     }
@@ -109,8 +111,12 @@ public:
     std::optional<Point> findPathToTargetPoint(const std::vector<std::string>& field,
                                                const Point& start,
                                                const Point& target) {
-        findPath(field, start, true,
-                 [&target](const std::shared_ptr<Node>& node) { return !!node && node->getPos() == target; });
+        findPath(
+            field, start, true,
+            [&target](const std::shared_ptr<Node>& node) { return !!node && node->getPos() == target; },
+            [&field](const Point& p) {
+                return IsValidPoint(field, p) && field[p.y][p.x] != '?' && field[p.y][p.x] != '#';
+            });
         printPathTree(field);
         return getFirstStep();
     }
@@ -135,7 +141,8 @@ private:
     void findPath(const std::vector<std::string>& field,
                   const Point& start,
                   const bool stopThenFound,
-                  const std::function<bool(const std::shared_ptr<Node>& node)>& foundCondition) {
+                  const std::function<bool(const std::shared_ptr<Node>& node)>& foundCondition,
+                  const std::function<bool(const Point& p)>& canStepOnCondition) {
         goal = nullptr;
         nodes.clear();
         if (!IsValidPoint(field, start)) {
@@ -146,7 +153,7 @@ private:
         std::queue<std::shared_ptr<Node>> nodesToVisit;
         const auto root = std::make_shared<Node>(start, 0);
         nodes.push_back(root);
-        if (IsSpace(field, start)) {
+        if (canStepOnCondition(start)) {
             nodesToVisit.push(root);
         }
         visitedPoints.insert(root->getPos());
@@ -167,7 +174,7 @@ private:
             //           << " visitedPoints: " << visitedPoints.size() << std::endl;
             for (const auto p :
                  {Point{pos.x - 1, pos.y}, Point{pos.x + 1, pos.y}, Point{pos.x, pos.y - 1}, Point{pos.x, pos.y + 1}}) {
-                if (!IsSpace(field, p) || visitedPoints.count(p)) {
+                if (!canStepOnCondition(p) || visitedPoints.count(p)) {
                     continue;
                 }
                 visitedPoints.insert(p);
@@ -254,10 +261,9 @@ int main() {
                 dir = pathTree.findPathToTargetPoint(field, pos, *startRoomPos);
             }
         } else {
-            if (controlRoomPos) {
+            dir = pathTree.findPathToNearestUnvisited(field, fieldVisited, pos);
+            if (!dir && controlRoomPos) {
                 dir = pathTree.findPathToTargetPoint(field, pos, *controlRoomPos);
-            } else {
-                dir = pathTree.findPathToNearestUnvisited(field, fieldVisited, pos);
             }
         }
 
