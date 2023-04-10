@@ -104,7 +104,6 @@ public:
                 return IsValidPoint(field, p) && field[p.y][p.x] != '?' && field[p.y][p.x] != '#' &&
                        field[p.y][p.x] != 'C';
             });
-        printPathTree(field);
         return getFirstStep();
     }
 
@@ -117,7 +116,6 @@ public:
             [&field](const Point& p) {
                 return IsValidPoint(field, p) && field[p.y][p.x] != '?' && field[p.y][p.x] != '#';
             });
-        printPathTree(field);
         return getFirstStep();
     }
 
@@ -234,7 +232,7 @@ int main() {
         std::cin >> pos.y >> pos.x;
         std::cin.ignore();
 
-        std::cerr << "Rick's pos: " << pos << std::endl;
+        // std::cerr << "Rick's pos: " << pos << std::endl;
 
         fieldVisited[pos.y][pos.x] = true;
 
@@ -247,13 +245,13 @@ int main() {
 
         const auto controlRoomPos = TryGetRoomLocation(field, 'C');
 
-        std::cerr << "controlRoomPos: " << controlRoomPos.value_or(Point{-1, -1}) << std::endl;
+        // std::cerr << "controlRoomPos: " << controlRoomPos.value_or(Point{-1, -1}) << std::endl;
 
         if (controlRoomPos && *controlRoomPos == pos) {
             isContolRoomReached = true;
         }
 
-        std::cerr << "isControlRoomReached: " << isContolRoomReached << std::endl;
+        // std::cerr << "isControlRoomReached: " << isContolRoomReached << std::endl;
 
         std::optional<Point> dir;
         if (isContolRoomReached) {
@@ -266,6 +264,7 @@ int main() {
                 dir = pathTree.findPathToTargetPoint(field, pos, *controlRoomPos);
             }
         }
+        pathTree.printPathTree(field);
 
         // Write an action using cout. DON'T FORGET THE "<< endl"
         // To debug: cerr << "Debug messages..." << endl;
